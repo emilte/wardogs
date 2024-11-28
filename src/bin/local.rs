@@ -21,7 +21,24 @@ fn main() {
 }
 
 #[derive(Component)]
-struct Plane;
+struct Plane {
+    base_speed: f32,
+    current_speed: f32,
+    max_speed: f32,
+    acceleration: f32,
+}
+
+impl Default for Plane {
+    fn default() -> Self {
+        const BASE_SPEED: f32 = 200.0;
+        Self {
+            base_speed: BASE_SPEED,
+            current_speed: BASE_SPEED,
+            max_speed: BASE_SPEED * 1.5,
+            acceleration: 100.0, // Speed increase per second
+        }
+    }
+}
 
 #[derive(Component)]
 struct Bullet {
@@ -58,7 +75,7 @@ fn setup(mut commands: Commands, window_query: Query<&Window>, asset_server: Res
             transform: Transform::from_xyz(-300.0, 0.0, 0.0),
             ..default()
         },
-        Plane,
+        Plane::default(),
         RigidBody::Dynamic,
         Collider::triangle(
             Vec2::new(-plane_size.x / 2.0, -plane_size.y / 2.0),
@@ -106,12 +123,12 @@ fn setup(mut commands: Commands, window_query: Query<&Window>, asset_server: Res
 
 fn plane_movement(
     keyboard: Res<ButtonInput<KeyCode>>,
-    mut query: Query<(&mut Transform, &mut LinearVelocity), With<Plane>>,
+    time: Res<Time>,
+    mut query: Query<(&mut Transform, &mut LinearVelocity, &mut Plane)>,
 ) {
-    let (mut transform, mut velocity) = query.single_mut();
+    let (mut transform, mut velocity, mut plane) = query.single_mut();
 
     const ROTATION_SPEED: f32 = 2.0;
-    const THRUST: f32 = 200.0;
 
     // Rotate up/down
     if keyboard.pressed(KeyCode::ArrowLeft) {
@@ -121,9 +138,18 @@ fn plane_movement(
         transform.rotate_z(-ROTATION_SPEED * std::f32::consts::PI / 180.0);
     }
 
+    // Handle acceleration
+    if keyboard.pressed(KeyCode::ArrowUp) {
+        plane.current_speed =
+            (plane.current_speed + plane.acceleration * time.delta_seconds()).min(plane.max_speed);
+    } else {
+        plane.current_speed =
+            (plane.current_speed - plane.acceleration * time.delta_seconds()).max(plane.base_speed);
+    }
+
     // Apply thrust in the direction the plane is facing
     let direction = transform.rotation * Vec3::X;
-    velocity.0 = direction.truncate() * THRUST;
+    velocity.0 = direction.truncate() * plane.current_speed;
 }
 
 fn shoot_bullets(
