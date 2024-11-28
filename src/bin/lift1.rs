@@ -1,16 +1,19 @@
 use avian2d::prelude::*;
 use bevy::prelude::*;
 
-const BASE_SPEED: f32 = 0.0;
-const MAX_SPEED: f32 = 300.0;
-const ACCELLERATION: f32 = 100.0;
-const ROTATION_SPEED: f32 = 3.0;
+const GRAVITY: f32 = -100.0;
+const PLANE_GRAVITY: f32 = -150.0;
+const DRAG: f32 = 0.96;
+const ROTATION_SPEED: f32 = 3.5;
+const LIFT_COEFFICIENT: f32 = 0.6;
+const ACCELERATION: f32 = 100.0;
+const FRICTION: f32 = ACCELERATION * 2.0;
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest()))
         .add_plugins(PhysicsPlugins::default())
-        .insert_resource(Gravity(Vec2::new(0.0, -100.0)))
+        .insert_resource(Gravity(Vec2::new(0.0, GRAVITY)))
         .add_systems(Startup, setup)
         .add_systems(
             Update,
@@ -31,15 +34,21 @@ struct Plane {
     current_speed: f32,
     max_speed: f32,
     acceleration: f32,
+    friction: f32,
+    lift_coefficient: f32,
+    vertical_velocity: f32,
 }
 
 impl Default for Plane {
     fn default() -> Self {
         Self {
-            base_speed: BASE_SPEED,
-            current_speed: MAX_SPEED,
-            max_speed: MAX_SPEED,
-            acceleration: ACCELLERATION, // Speed increase per second
+            base_speed: 0.0,
+            current_speed: 100.0,
+            max_speed: 300.0,
+            acceleration: ACCELERATION,
+            friction: FRICTION,
+            lift_coefficient: LIFT_COEFFICIENT,
+            vertical_velocity: 0.0,
         }
     }
 }
@@ -131,6 +140,10 @@ fn plane_movement(
     mut query: Query<(&mut Transform, &mut LinearVelocity, &mut Plane)>,
 ) {
     let (mut transform, mut velocity, mut plane) = query.single_mut();
+    let dt = time.delta_seconds();
+
+    // Get current angle
+    let angle = transform.rotation.to_euler(EulerRot::XYZ).2;
 
     // Rotate up/down
     if keyboard.pressed(KeyCode::ArrowLeft) {
@@ -142,16 +155,35 @@ fn plane_movement(
 
     // Handle acceleration
     if keyboard.pressed(KeyCode::ArrowUp) {
-        plane.current_speed =
-            (plane.current_speed + plane.acceleration * time.delta_seconds()).min(plane.max_speed);
+        plane.current_speed = (plane.current_speed + plane.acceleration * dt).min(plane.max_speed);
     } else {
-        plane.current_speed =
-            (plane.current_speed - plane.acceleration * time.delta_seconds()).max(plane.base_speed);
+        plane.current_speed = (plane.current_speed - plane.friction * dt).max(plane.base_speed);
     }
 
-    // Apply thrust in the direction the plane is facing
+    // Calculate lift based on speed and angle
+    // let lift = f32::max(
+    //     0.0,
+    //     plane.current_speed * plane.lift_coefficient * angle.cos(),
+    // );
+    // let lift = (plane.current_speed * plane.lift_coefficient * angle.cos()).abs();
+    let mut lift = plane.current_speed * plane.lift_coefficient * angle.cos();
+    if lift < 0.0 {
+        lift /= -2.0;
+    }
+    // info!(lift);
+
+    // Update vertical velocity with gravity and lift
+    plane.vertical_velocity += PLANE_GRAVITY * dt;
+
+    plane.vertical_velocity += lift * dt;
+
+    // Apply drag to vertical velocity
+    plane.vertical_velocity *= DRAG;
+
+    // Combine horizontal movement and vertical velocity
     let direction = transform.rotation * Vec3::X;
-    velocity.0 = direction.truncate() * plane.current_speed;
+    let forward_motion = direction.truncate() * plane.current_speed;
+    velocity.0 = Vec2::new(forward_motion.x, forward_motion.y + plane.vertical_velocity);
 }
 
 fn shoot_bullets(
