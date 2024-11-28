@@ -3,7 +3,7 @@ use bevy::prelude::*;
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
+        .add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest()))
         .add_plugins(PhysicsPlugins::default())
         .insert_resource(Gravity(Vec2::new(0.0, -100.0)))
         .add_systems(Startup, setup)
@@ -31,7 +31,10 @@ struct Bullet {
 #[derive(Component)]
 struct Target;
 
-fn setup(mut commands: Commands, window_query: Query<&Window>) {
+#[derive(Component)]
+struct Ground;
+
+fn setup(mut commands: Commands, window_query: Query<&Window>, asset_server: Res<AssetServer>) {
     let window = window_query.single();
     let window_width = window.width();
     let window_height = window.height();
@@ -39,12 +42,17 @@ fn setup(mut commands: Commands, window_query: Query<&Window>) {
     // Camera
     commands.spawn(Camera2dBundle::default());
 
-    // Plane (triangle)
+    // Load the plane texture
+    let plane_texture = asset_server.load("plane.png");
+    let plane_size = Vec2::new(40.0, 20.0);
+
+    // Plane with sprite
     commands.spawn((
         SpriteBundle {
+            texture: plane_texture,
             sprite: Sprite {
-                color: Color::BLACK,
-                custom_size: Some(Vec2::new(40.0, 20.0)),
+                custom_size: Some(plane_size),
+                flip_x: true,
                 ..default()
             },
             transform: Transform::from_xyz(-300.0, 0.0, 0.0),
@@ -53,9 +61,9 @@ fn setup(mut commands: Commands, window_query: Query<&Window>) {
         Plane,
         RigidBody::Dynamic,
         Collider::triangle(
-            Vec2::new(-20.0, -10.0),
-            Vec2::new(-20.0, 10.0),
-            Vec2::new(20.0, 0.0),
+            Vec2::new(-plane_size.x / 2.0, -plane_size.y / 2.0),
+            Vec2::new(-plane_size.x / 2.0, plane_size.y / 2.0),
+            Vec2::new(plane_size.x / 2.0, 0.0),
         ),
         LinearVelocity::default(),
         CollidingEntities::default(),
@@ -89,6 +97,7 @@ fn setup(mut commands: Commands, window_query: Query<&Window>) {
             transform: Transform::from_xyz(0.0, -window_height / 2.0, 0.0),
             ..default()
         },
+        Ground,
         RigidBody::Static,
         Collider::rectangle(window_width + 100.0, 20.0),
         CollidingEntities::default(),
@@ -125,7 +134,7 @@ fn shoot_bullets(
     if keyboard.just_pressed(KeyCode::Space) {
         let plane_transform = query.single();
         let direction = plane_transform.rotation * Vec3::X;
-        const BULLET_SPEED: f32 = 400.0;
+        const BULLET_SPEED: f32 = 500.0;
         const BULLET_SIZE: f32 = 5.0;
 
         commands.spawn((
@@ -168,15 +177,7 @@ fn handle_collisions(
     planes: Query<(Entity, &CollidingEntities), With<Plane>>,
     bullets: Query<(Entity, &CollidingEntities), With<Bullet>>,
     targets: Query<(Entity, &Transform), With<Target>>,
-    ground_query: Query<
-        Entity,
-        (
-            With<RigidBody>,
-            Without<Plane>,
-            Without<Target>,
-            Without<Bullet>,
-        ),
-    >,
+    ground_query: Query<Entity, With<Ground>>,
 ) {
     let ground_entity = ground_query.single();
 
@@ -214,11 +215,9 @@ fn wrap_plane_position(
             transform.translation.x = half_width;
         }
 
-        // Wrap vertically
-        if transform.translation.y > half_height {
+        // Wrap vertically ( will crash in the ground).
+        if transform.translation.y > half_height * 1.1 {
             transform.translation.y = -half_height;
-        } else if transform.translation.y < -half_height {
-            transform.translation.y = half_height;
         }
     }
 }
