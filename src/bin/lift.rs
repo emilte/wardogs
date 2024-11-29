@@ -39,22 +39,21 @@ fn setup(mut commands: Commands, window_query: Query<&Window>, asset_server: Res
     commands.spawn(Camera2dBundle::default());
 
     // Load the plane texture
-    let plane_texture = asset_server.load("plane.png");
     let plane_size = Vec2::new(40.0, 20.0);
 
     // Plane with sprite
     commands.spawn((
         SpriteBundle {
-            texture: plane_texture,
+            texture: asset_server.load("plane.png"),
             sprite: Sprite {
                 custom_size: Some(plane_size),
                 flip_x: true,
                 ..default()
             },
-            transform: Transform::from_xyz(-300.0, 0.0, 0.0),
+            transform: Transform::from_xyz(-300.0, 200.0, 0.0),
             ..default()
         },
-        Plane::default(),
+        Plane::lift_v2(),
         RigidBody::Dynamic,
         Collider::triangle(
             Vec2::new(-plane_size.x / 2.0, -plane_size.y / 2.0),

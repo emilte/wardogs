@@ -1,22 +1,27 @@
 use avian2d::prelude::*;
 use bevy::prelude::*;
 
-pub const PLANE_GRAVITY: f32 = -150.0;
+pub const GRAVITY: f32 = -150.0;
 pub const DRAG: f32 = 0.96;
+pub const MAX_SPEED: f32 = 300.0;
 pub const ROTATION_SPEED: f32 = 3.5;
 pub const LIFT_COEFFICIENT: f32 = 0.6;
 pub const ACCELERATION: f32 = 100.0;
-pub const FRICTION: f32 = ACCELERATION * 2.0;
+pub const DECELERATION: f32 = 200.0;
 
 #[derive(Component)]
 pub struct Plane {
     pub base_speed: f32,
     pub current_speed: f32,
+    pub vertical_velocity: f32,
+
+    pub drag: f32,
+    pub gravity: f32,
     pub max_speed: f32,
     pub acceleration: f32,
-    pub friction: f32,
+    pub deceleration: f32,
+    pub rotation_speed: f32,
     pub lift_coefficient: f32,
-    pub vertical_velocity: f32,
 }
 
 impl Default for Plane {
@@ -24,11 +29,33 @@ impl Default for Plane {
         Self {
             base_speed: 0.0,
             current_speed: 100.0,
-            max_speed: 300.0,
-            acceleration: ACCELERATION,
-            friction: FRICTION,
-            lift_coefficient: LIFT_COEFFICIENT,
             vertical_velocity: 0.0,
+
+            drag: DRAG,
+            gravity: GRAVITY,
+            max_speed: MAX_SPEED,
+            acceleration: ACCELERATION,
+            deceleration: DECELERATION,
+            rotation_speed: ROTATION_SPEED,
+            lift_coefficient: LIFT_COEFFICIENT,
+        }
+    }
+}
+
+impl Plane {
+    pub fn lift_v2() -> Self {
+        Self {
+            base_speed: 50.0,
+            current_speed: 0.0,
+            vertical_velocity: 0.0,
+
+            drag: 0.98,
+            gravity: GRAVITY,
+            max_speed: MAX_SPEED,
+            acceleration: 50.0,
+            deceleration: DECELERATION,
+            rotation_speed: ROTATION_SPEED,
+            lift_coefficient: LIFT_COEFFICIENT,
         }
     }
 }
@@ -46,17 +73,17 @@ pub fn system_plane_movement(
 
     // Rotate up/down
     if keyboard.pressed(KeyCode::ArrowLeft) {
-        transform.rotate_z(ROTATION_SPEED * std::f32::consts::PI / 180.0);
+        transform.rotate_z(plane.rotation_speed * std::f32::consts::PI / 180.0);
     }
     if keyboard.pressed(KeyCode::ArrowRight) {
-        transform.rotate_z(-ROTATION_SPEED * std::f32::consts::PI / 180.0);
+        transform.rotate_z(-plane.rotation_speed * std::f32::consts::PI / 180.0);
     }
 
     // Handle acceleration
     if keyboard.pressed(KeyCode::ArrowUp) {
         plane.current_speed = (plane.current_speed + plane.acceleration * dt).min(plane.max_speed);
     } else {
-        plane.current_speed = (plane.current_speed - plane.friction * dt).max(plane.base_speed);
+        plane.current_speed = (plane.current_speed - plane.deceleration * dt).max(plane.base_speed);
     }
 
     // Calculate lift based on speed and angle
@@ -72,12 +99,12 @@ pub fn system_plane_movement(
     // info!(lift);
 
     // Update vertical velocity with gravity and lift
-    plane.vertical_velocity += PLANE_GRAVITY * dt;
+    plane.vertical_velocity += plane.gravity * dt;
 
     plane.vertical_velocity += lift * dt;
 
     // Apply drag to vertical velocity
-    plane.vertical_velocity *= DRAG;
+    plane.vertical_velocity *= plane.drag;
 
     // Combine horizontal movement and vertical velocity
     let direction = transform.rotation * Vec3::X;
@@ -94,10 +121,10 @@ pub fn system_simple_plane_movement(
 
     // Rotate up/down
     if keyboard.pressed(KeyCode::ArrowLeft) {
-        transform.rotate_z(ROTATION_SPEED * std::f32::consts::PI / 180.0);
+        transform.rotate_z(plane.rotation_speed * std::f32::consts::PI / 180.0);
     }
     if keyboard.pressed(KeyCode::ArrowRight) {
-        transform.rotate_z(-ROTATION_SPEED * std::f32::consts::PI / 180.0);
+        transform.rotate_z(-plane.rotation_speed * std::f32::consts::PI / 180.0);
     }
 
     // Handle acceleration
