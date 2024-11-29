@@ -1,35 +1,40 @@
-// use bevy::prelude::*;
-// use bevy_renet::renet::Bytes;
-// use serde::*;
+use avian2d::prelude::*;
+use bevy::prelude::*;
+use bullet::Bullet;
+use ground::Ground;
+use plane::Plane;
+use target::Target;
 
-// pub mod bullet;
-// pub mod physics;
-// pub mod player;
+// Define or import the Target type
 
-// /// Protocol ID needs to be the same across client/server.
-// pub const PROTOCOL_ID: u64 = 0;
+pub mod bullet;
+pub mod ground;
+pub mod plane;
+pub mod target;
 
-// #[derive(Resource)]
-// pub struct MyClientId(pub u64);
+pub fn system_handle_collisions(
+    mut commands: Commands,
+    planes: Query<(Entity, &CollidingEntities), With<Plane>>,
+    bullets: Query<(Entity, &CollidingEntities), With<Bullet>>,
+    targets: Query<(Entity, &Transform), With<Target>>,
+    ground_query: Query<Entity, With<Ground>>,
+) {
+    let ground_entity = ground_query.single();
 
-// #[derive(Debug, Serialize, Deserialize, Event)]
-// pub enum MultiplayerEvent {
-//     Ping { hello: String },
-//     PlayerCreated(ServerPlayer),
-//     PlayerMoved(ServerPlayer),
-//     PlayerDeleted(u64),
-// }
+    // Check plane collisions with ground only
+    for (plane_entity, colliding) in &planes {
+        if colliding.contains(&ground_entity) {
+            commands.entity(plane_entity).despawn();
+        }
+    }
 
-// #[derive(Debug, Serialize, Deserialize, Clone)]
-// pub struct ServerPlayer {
-//     pub client_id: u64,
-//     pub position: Vec2,
-// }
-
-// impl MultiplayerEvent {
-//     pub fn bytes(self) -> Bytes {
-//         bincode::serialize(&self)
-//             .expect("Failed to serialize multiplayer event")
-//             .into()
-//     }
-// }
+    // Check bullet collisions with target
+    if let Ok((target_entity, _)) = targets.get_single() {
+        for (bullet_entity, colliding) in &bullets {
+            if colliding.contains(&target_entity) {
+                commands.entity(bullet_entity).despawn();
+                commands.entity(target_entity).despawn();
+            }
+        }
+    }
+}

@@ -1,47 +1,55 @@
-// use bevy::prelude::*;
+use avian2d::prelude::*;
+use bevy::prelude::*;
 
-// use crate::{
-//     physics::Velocity,
-//     player::{FaceInDirection, Lifetime, Player},
-// };
+use crate::plane::Plane;
 
-// #[derive(Component)]
-// struct Bullet;
+#[derive(Component)]
+pub struct Bullet {
+    pub lifetime: Timer,
+}
 
-// pub fn player_shooting_system(
-//     mut commands: Commands,
-//     mut players: Query<(&Transform, &Velocity, &mut Player)>,
-//     keys: Res<Input<KeyCode>>,
-//     assets: Res<AssetServer>,
-//     time: Res<Time>,
-// ) {
-//     let bullet_speed = 500.0;
-//     for (transform, velocity, mut player) in players.iter_mut() {
-//         if !keys.pressed(player.button_shoot) {
-//             continue;
-//         }
-//         player.shooting_timer -= time.delta_seconds();
-//         if player.shooting_timer > 0.0 {
-//             continue;
-//         }
-//         player.shooting_timer = 0.5;
+pub fn system_shoot_bullets(
+    mut commands: Commands,
+    keyboard: Res<ButtonInput<KeyCode>>,
+    query: Query<&Transform, With<Plane>>,
+) {
+    if keyboard.just_pressed(KeyCode::Space) {
+        let plane_transform = query.single();
+        let direction = plane_transform.rotation * Vec3::X;
+        const BULLET_SPEED: f32 = 500.0;
+        const BULLET_SIZE: f32 = 5.0;
 
-//         let dir = velocity.0.normalize() * bullet_speed;
+        commands.spawn((
+            SpriteBundle {
+                sprite: Sprite {
+                    color: Color::WHITE,
+                    custom_size: Some(Vec2::new(BULLET_SIZE, BULLET_SIZE)),
+                    ..default()
+                },
+                transform: Transform::from_translation(
+                    plane_transform.translation + direction * 30.0,
+                ),
+                ..default()
+            },
+            Bullet {
+                lifetime: Timer::from_seconds(2.0, TimerMode::Once),
+            },
+            RigidBody::Dynamic,
+            Collider::circle(BULLET_SIZE / 2.0),
+            LinearVelocity(direction.truncate() * BULLET_SPEED),
+        ));
+    }
+}
 
-//         commands.spawn((
-//             Bullet,
-//             Lifetime(3.0),
-//             Velocity(dir),
-//             FaceInDirection,
-//             SpriteBundle {
-//                 texture: assets.load("../assets/laser.png"),
-//                 sprite: Sprite {
-//                     custom_size: Some(Vec2::new(10.0, 64.0)),
-//                     ..default()
-//                 },
-//                 transform: Transform::default().with_translation(transform.translation),
-//                 ..default()
-//             },
-//         ));
-//     }
-// }
+pub fn system_cleanup_bullets(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut bullets: Query<(Entity, &mut Bullet)>,
+) {
+    for (entity, mut bullet) in &mut bullets {
+        bullet.lifetime.tick(time.delta());
+        if bullet.lifetime.finished() {
+            commands.entity(entity).despawn();
+        }
+    }
+}
