@@ -22,10 +22,6 @@ pub struct Plane {
     pub btn_boost: KeyCode,
     pub btn_shoot: KeyCode,
 
-    pub reverse: bool,
-
-    /// 1 or -1
-    pub direction: f32,
     pub dir: PlaneDirection,
 
     pub base_speed: f32,
@@ -50,10 +46,7 @@ impl Default for Plane {
             btn_boost: KeyCode::ArrowUp,
             btn_shoot: KeyCode::Space,
 
-            direction: 1.0,
             dir: PlaneDirection::RIGHT,
-
-            reverse: false,
 
             base_speed: 0.0,
             plane_gravity: PLANE_GRAVITY,
@@ -77,20 +70,8 @@ impl Plane {
             ..Plane::default()
         }
     }
-    pub fn get_up(&self) -> KeyCode {
-        match self.dir {
-            PlaneDirection::RIGHT => self.btn_left,
-            PlaneDirection::LEFT => self.btn_right,
-        }
-    }
-    pub fn get_down(&self) -> KeyCode {
-        match self.dir {
-            PlaneDirection::RIGHT => self.btn_right,
-            PlaneDirection::LEFT => self.btn_left,
-        }
-    }
+    /// Can be multiplied with values to get correct horizontal movement.
     pub fn d(&self) -> f32 {
-        // 1.0
         match self.dir {
             PlaneDirection::RIGHT => 1.0,
             PlaneDirection::LEFT => -1.0,
@@ -124,7 +105,7 @@ pub fn system_plane_movement(
                 (plane.current_speed.abs() - plane.deceleration * dt).max(plane.base_speed) * d;
         }
 
-        // Get current angle
+        // Get current angle.
         let angle = transform.rotation.to_euler(EulerRot::XYZ).2;
 
         // Calculate lift based on speed and angle
@@ -138,7 +119,7 @@ pub fn system_plane_movement(
             lift /= -2.0;
         }
 
-        // Update vertical velocity with gravity and lift
+        // Update vertical velocity with gravity and lift.
         plane.vertical_velocity += plane.plane_gravity * dt;
 
         plane.vertical_velocity += lift * dt;
@@ -172,7 +153,7 @@ pub fn system_simple_plane_movement(
         transform.rotate_z(-plane.rotation_speed * std::f32::consts::PI / 180.0);
     }
 
-    // Handle acceleration
+    // Handle acceleration.
     if keyboard.pressed(KeyCode::ArrowUp) {
         plane.current_speed =
             (plane.current_speed + plane.acceleration * time.delta_seconds()).min(plane.max_speed);

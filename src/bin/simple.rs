@@ -5,7 +5,6 @@ use wardogs::bullet::{system_cleanup_bullets, system_shoot_bullets};
 use wardogs::ground::Ground;
 use wardogs::plane::{system_simple_plane_movement, system_wrap_plane_position, Plane};
 use wardogs::system_handle_collisions;
-use wardogs::target::Target;
 
 fn main() {
     App::new()
@@ -61,23 +60,6 @@ fn setup(mut commands: Commands, window_query: Query<&Window>, asset_server: Res
             Vec2::new(plane_size.x / 2.0, 0.0),
         ),
         LinearVelocity::default(),
-        CollidingEntities::default(),
-    ));
-
-    // Target
-    commands.spawn((
-        SpriteBundle {
-            sprite: Sprite {
-                color: Color::BLACK,
-                custom_size: Some(Vec2::new(30.0, 30.0)),
-                ..default()
-            },
-            transform: Transform::from_xyz(300.0, 200.0, 0.0),
-            ..default()
-        },
-        Target,
-        RigidBody::Static,
-        Collider::rectangle(30.0, 30.0),
         CollidingEntities::default(),
     ));
 

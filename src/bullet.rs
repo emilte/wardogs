@@ -43,31 +43,20 @@ pub fn system_shoot_bullets(
             ));
         }
     }
-
-    // if keyboard.just_pressed(KeyCode::Space) {
-    //     let plane_transform = query.single();
-    //     let direction = plane_transform.rotation * Vec3::X;
-
-    //     commands.spawn((
-    //         SpriteBundle {
-    //             sprite: Sprite {
-    //                 color: Color::WHITE,
-    //                 custom_size: Some(Vec2::new(BULLET_SIZE, BULLET_SIZE)),
-    //                 ..default()
-    //             },
-    //             transform: Transform::from_translation(
-    //                 plane_transform.translation + direction * 30.0,
-    //             ),
-    //             ..default()
-    //         },
-    //         Bullet {
-    //             lifetime: Timer::from_seconds(2.0, TimerMode::Once),
-    //         },
-    //         RigidBody::Dynamic,
-    //         Collider::circle(BULLET_SIZE / 2.0),
-    //         LinearVelocity(direction.truncate() * BULLET_SPEED),
-    //     ));
-    // }
+}
+pub fn system_handle_bullet_hits(
+    mut commands: Commands,
+    planes: Query<(Entity, &CollidingEntities), With<Plane>>,
+    bullets: Query<(Entity, &Bullet)>,
+) {
+    for (bullet_entity, _) in &bullets {
+        for (plane_entity, colliding) in &planes {
+            if colliding.contains(&bullet_entity) {
+                commands.entity(bullet_entity).despawn();
+                commands.entity(plane_entity).despawn();
+            }
+        }
+    }
 }
 
 pub fn system_cleanup_bullets(

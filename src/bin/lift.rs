@@ -2,10 +2,9 @@ use avian2d::prelude::*;
 use bevy::prelude::*;
 
 use wardogs::{
-    bullet::{system_cleanup_bullets, system_shoot_bullets},
-    ground::Ground,
-    plane::{system_plane_movement, system_wrap_plane_position, Plane},
-    system_handle_collisions,
+    bullet::{system_cleanup_bullets, system_handle_bullet_hits, system_shoot_bullets},
+    ground::{system_handle_collisions, Ground},
+    plane::{system_plane_movement, system_wrap_plane_position, Plane, PlaneDirection},
 };
 
 const GRAVITY: f32 = -100.0;
@@ -31,6 +30,7 @@ fn main() {
             (
                 system_plane_movement,
                 system_shoot_bullets,
+                system_handle_bullet_hits,
                 system_cleanup_bullets,
                 system_handle_collisions,
                 system_wrap_plane_position,
@@ -65,8 +65,7 @@ fn setup(mut commands: Commands, window_query: Query<&Window>, asset_server: Res
             ..default()
         },
         Plane {
-            direction: -1.0,
-            dir: wardogs::plane::PlaneDirection::LEFT,
+            dir: PlaneDirection::LEFT,
             ..default()
         },
         RigidBody::Dynamic,
@@ -96,7 +95,7 @@ fn setup(mut commands: Commands, window_query: Query<&Window>, asset_server: Res
             btn_right: KeyCode::KeyD,
             btn_boost: KeyCode::KeyW,
             btn_shoot: KeyCode::ShiftLeft,
-            ..default()
+            ..Plane::lift_v2()
         },
         RigidBody::Dynamic,
         Collider::rectangle(plane_size.x, plane_size.y),
@@ -109,7 +108,7 @@ fn setup(mut commands: Commands, window_query: Query<&Window>, asset_server: Res
     commands.spawn((
         SpriteBundle {
             sprite: Sprite {
-                color: Color::srgb(0., 100., 0.),
+                color: Color::srgb(0., 10., 0.),
                 custom_size: Some(Vec2::new(window_width + 100.0, GROUND_HEIGHT)),
                 ..default()
             },
