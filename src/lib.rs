@@ -26,12 +26,18 @@ pub fn system_handle_collisions(
         if colliding.contains(&ground_entity) {
             commands.entity(plane_entity).despawn();
         }
+        for (bullet_entity, colliding) in &bullets {
+            if colliding.contains(&plane_entity) {
+                commands.entity(bullet_entity).despawn();
+                commands.entity(plane_entity).despawn();
+            }
+        }
     }
 
     // Check bullet collisions with target
     if let Ok((target_entity, _)) = targets.get_single() {
         for (bullet_entity, colliding) in &bullets {
-            if colliding.contains(&target_entity) {
+            if colliding.contains(&target_entity) || colliding.contains(&ground_entity) {
                 commands.entity(bullet_entity).despawn();
                 commands.entity(target_entity).despawn();
             }

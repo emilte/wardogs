@@ -6,10 +6,19 @@ use wardogs::{
     ground::Ground,
     plane::{system_plane_movement, system_wrap_plane_position, Plane},
     system_handle_collisions,
-    target::Target,
 };
 
 const GRAVITY: f32 = -100.0;
+
+// #[derive(PhysicsLayer)]
+// enum GameLayer {
+//     Player, // Layer 0
+//     Enemy,  // Layer 1
+//     Ground, // Layer 2
+// }
+
+// // Player collides with enemies and the ground, but not with other players
+// let layers = CollisionLayers::new(GameLayer::Player, [GameLayer::Enemy, GameLayer::Ground]);
 
 fn main() {
     App::new()
@@ -34,6 +43,7 @@ fn setup(mut commands: Commands, window_query: Query<&Window>, asset_server: Res
     let window = window_query.single();
     let window_width = window.width();
     let window_height = window.height();
+    let plane_texture = asset_server.load("plane.png");
 
     // Camera
     commands.spawn(Camera2dBundle::default());
@@ -44,16 +54,21 @@ fn setup(mut commands: Commands, window_query: Query<&Window>, asset_server: Res
     // Plane with sprite
     commands.spawn((
         SpriteBundle {
-            texture: asset_server.load("plane.png"),
+            texture: plane_texture.clone(),
             sprite: Sprite {
                 custom_size: Some(plane_size),
-                flip_x: true,
+                flip_x: false,
+                // flip_y: true,
                 ..default()
             },
-            transform: Transform::from_xyz(-300.0, 200.0, 0.0),
+            transform: Transform::from_xyz(300.0, 200.0, 0.0),
             ..default()
         },
-        Plane::lift_v2(),
+        Plane {
+            direction: -1.0,
+            dir: wardogs::plane::PlaneDirection::LEFT,
+            ..default()
+        },
         RigidBody::Dynamic,
         Collider::triangle(
             Vec2::new(-plane_size.x / 2.0, -plane_size.y / 2.0),
@@ -64,29 +79,38 @@ fn setup(mut commands: Commands, window_query: Query<&Window>, asset_server: Res
         CollidingEntities::default(),
     ));
 
-    // Target
+    // Opponent Plane with sprite.
     commands.spawn((
         SpriteBundle {
+            texture: plane_texture,
             sprite: Sprite {
-                color: Color::BLACK,
-                custom_size: Some(Vec2::new(30.0, 30.0)),
+                custom_size: Some(plane_size),
+                flip_x: true,
                 ..default()
             },
-            transform: Transform::from_xyz(300.0, 200.0, 0.0),
+            transform: Transform::from_xyz(-300.0, 200.0, 0.0),
             ..default()
         },
-        Target,
-        RigidBody::Static,
-        Collider::rectangle(30.0, 30.0),
+        Plane {
+            btn_left: KeyCode::KeyA,
+            btn_right: KeyCode::KeyD,
+            btn_boost: KeyCode::KeyW,
+            btn_shoot: KeyCode::ShiftLeft,
+            ..default()
+        },
+        RigidBody::Dynamic,
+        Collider::rectangle(plane_size.x, plane_size.y),
+        LinearVelocity::default(),
         CollidingEntities::default(),
     ));
 
     // Ground
+    const GROUND_HEIGHT: f32 = 40.0;
     commands.spawn((
         SpriteBundle {
             sprite: Sprite {
-                color: Color::BLACK,
-                custom_size: Some(Vec2::new(window_width + 100.0, 20.0)),
+                color: Color::srgb(0., 100., 0.),
+                custom_size: Some(Vec2::new(window_width + 100.0, GROUND_HEIGHT)),
                 ..default()
             },
             transform: Transform::from_xyz(0.0, -window_height / 2.0, 0.0),
@@ -94,7 +118,7 @@ fn setup(mut commands: Commands, window_query: Query<&Window>, asset_server: Res
         },
         Ground,
         RigidBody::Static,
-        Collider::rectangle(window_width + 100.0, 20.0),
+        Collider::rectangle(window_width + 100.0, GROUND_HEIGHT),
         CollidingEntities::default(),
     ));
 }
