@@ -9,15 +9,14 @@ use wardogs::{
 
 const GRAVITY: f32 = -100.0;
 
-// #[derive(PhysicsLayer)]
-// enum GameLayer {
-//     Player, // Layer 0
-//     Enemy,  // Layer 1
-//     Ground, // Layer 2
-// }
+#[derive(PhysicsLayer)]
+enum GameLayer {
+    Player, // Layer 0
+    Enemy,  // Layer 1
+    Ground, // Layer 2
+}
 
-// // Player collides with enemies and the ground, but not with other players
-// let layers = CollisionLayers::new(GameLayer::Player, [GameLayer::Enemy, GameLayer::Ground]);
+// Player collides with enemies and the ground, but not with other players
 
 fn main() {
     App::new()
@@ -51,6 +50,9 @@ fn setup(mut commands: Commands, window_query: Query<&Window>, asset_server: Res
     // Load the plane texture
     let plane_size = Vec2::new(40.0, 20.0);
 
+    let play_layers =
+        CollisionLayers::new(GameLayer::Player, [GameLayer::Enemy, GameLayer::Ground]);
+
     // Plane with sprite
     commands.spawn((
         SpriteBundle {
@@ -66,16 +68,13 @@ fn setup(mut commands: Commands, window_query: Query<&Window>, asset_server: Res
         },
         Plane {
             dir: PlaneDirection::LEFT,
-            ..default()
+            ..Plane::lift_v2()
         },
         RigidBody::Dynamic,
-        Collider::triangle(
-            Vec2::new(-plane_size.x / 2.0, -plane_size.y / 2.0),
-            Vec2::new(-plane_size.x / 2.0, plane_size.y / 2.0),
-            Vec2::new(plane_size.x / 2.0, 0.0),
-        ),
+        Collider::rectangle(plane_size.x / 2.0, plane_size.y / 2.0),
         LinearVelocity::default(),
         CollidingEntities::default(),
+        play_layers,
     ));
 
     // Opponent Plane with sprite.
@@ -98,9 +97,10 @@ fn setup(mut commands: Commands, window_query: Query<&Window>, asset_server: Res
             ..Plane::lift_v2()
         },
         RigidBody::Dynamic,
-        Collider::rectangle(plane_size.x, plane_size.y),
+        Collider::rectangle(plane_size.x / 2.0, plane_size.y / 2.0),
         LinearVelocity::default(),
         CollidingEntities::default(),
+        play_layers,
     ));
 
     // Ground
